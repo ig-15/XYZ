@@ -24,6 +24,8 @@ import AdminReports from "./pages/admin/Reports";
 import AttendantDashboard from "./pages/attendant/Dashboard";
 import RegisterEntryExit from "./pages/attendant/Register";
 import ParkingStatus from "./pages/attendant/Status";
+import AttendantTickets from "./pages/attendant/Tickets";
+import AttendantSettings from "./pages/attendant/Settings";
 
 // User Pages
 import UserDashboard from "./pages/user/Dashboard";
@@ -31,6 +33,7 @@ import BookParking from "./pages/user/Book";
 import UserCars from "./pages/user/Cars";
 import UserBookings from "./pages/user/Bookings";
 import UserHistory from "./pages/user/History";
+import UserSettings from "./pages/user/Settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -130,6 +133,22 @@ const App = () => (
                 </RequireAuth>
               }
             />
+            <Route
+              path="/attendant/tickets"
+              element={
+                <RequireAuth allowedRoles={['attendant']}>
+                  <AttendantTickets />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/attendant/settings"
+              element={
+                <RequireAuth allowedRoles={['attendant']}>
+                  <AttendantSettings />
+                </RequireAuth>
+              }
+            />
             
             {/* User Routes */}
             <Route
@@ -169,6 +188,14 @@ const App = () => (
               element={
                 <RequireAuth allowedRoles={['user']}>
                   <UserHistory />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/user/settings"
+              element={
+                <RequireAuth allowedRoles={['user']}>
+                  <UserSettings />
                 </RequireAuth>
               }
             />
