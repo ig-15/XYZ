@@ -95,7 +95,7 @@ router.get('/:id', authorizeRoles(['admin', 'attendant']), carsController.getCar
 
 /**
  * @swagger
- * /api/cars:
+ * /api/cars/register:
  *   post:
  *     summary: Register a new car
  *     security:
@@ -115,6 +115,14 @@ router.get('/:id', authorizeRoles(['admin', 'attendant']), carsController.getCar
  *               user_id:
  *                 type: string
  *                 format: uuid
+ *               make:
+ *                 type: string
+ *               model:
+ *                 type: string
+ *               color:
+ *                 type: string
+ *               year:
+ *                 type: integer
  *     responses:
  *       201:
  *         description: Car registered successfully
@@ -123,7 +131,7 @@ router.get('/:id', authorizeRoles(['admin', 'attendant']), carsController.getCar
  *       409:
  *         description: Car with this plate number already registered
  */
-router.post('/', authorizeRoles(['admin', 'attendant']), carsController.registerCar);
+router.post('/register', authorizeRoles(['admin', 'attendant', 'user']), carsController.registerCar);
 
 /**
  * @swagger

@@ -59,7 +59,7 @@ import { useAuth } from '@/context/AuthContext';
 
 // Form schema for car
 const carFormSchema = z.object({
-  plate_number: z.string().min(1, 'Plate number is required'),
+  plate_number: z.string().min(1, 'Plate number is required').transform(val => val.toUpperCase()),
   make: z.string().optional(),
   model: z.string().optional(),
   color: z.string().optional(),
@@ -99,7 +99,7 @@ const CarsPage: React.FC = () => {
   const createCarMutation = useMutation({
     mutationFn: (data: CarFormValues) => carApi.createCar({
       ...data,
-      owner_id: user?.id || '',
+      user_id: user?.id,
       year: data.year ? parseInt(data.year) : undefined,
     }),
     onSuccess: () => {

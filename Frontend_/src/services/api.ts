@@ -29,6 +29,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true
 });
 
 // Request interceptor for API calls
@@ -65,49 +66,85 @@ api.interceptors.response.use(
   }
 );
 
+// Create service-specific axios instances
+const createServiceInstance = (baseURL: string) => {
+  const instance = axios.create({
+    baseURL,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    withCredentials: true
+  });
+
+  // Add request interceptor
+  instance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Add response interceptor
+  instance.interceptors.response.use(
+    (response) => {
+      return response;
+    },
+    (error) => {
+      const message = error.response?.data?.message || 'An error occurred';
+      toast.error(message);
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      
+      return Promise.reject(error);
+    }
+  );
+
+  return instance;
+};
+
+// Create service instances
+const authInstance = createServiceInstance(AUTH_SERVICE_URL);
+const userInstance = createServiceInstance(USER_SERVICE_URL);
+const parkingInstance = createServiceInstance(PARKING_SERVICE_URL);
+const carEntryInstance = createServiceInstance(CAR_ENTRY_SERVICE_URL);
+const reportingInstance = createServiceInstance(REPORTING_SERVICE_URL);
+const carInstance = createServiceInstance(CAR_SERVICE_URL);
+const bookingInstance = createServiceInstance(BOOKING_SERVICE_URL);
+const ticketInstance = createServiceInstance(TICKET_SERVICE_URL);
+const logInstance = createServiceInstance(LOG_SERVICE_URL);
+
 // Auth endpoints
 export const authApi = {
   login: async (email: string, password: string) => {
-    const response = await axios.post(`${AUTH_SERVICE_URL}/login`, { email, password });
+    const response = await authInstance.post('/login', { email, password });
     const { user, token } = response.data;
     return { user, token };
   },
   
   register: async (userData: Partial<User> & { password: string }) => {
-    const response = await axios.post(`${AUTH_SERVICE_URL}/register`, userData);
+    const response = await authInstance.post('/register', userData);
     return response.data;
   },
   
   getCurrentUser: async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No token found');
-    }
-    
-    const response = await axios.get(`${AUTH_SERVICE_URL}/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await authInstance.get('/me');
     return response.data.user;
   },
   
   logout: async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('No token found');
-    }
-    
-    const response = await axios.post(`${AUTH_SERVICE_URL}/logout`, {}, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
-    // Clear local storage
+    const response = await authInstance.post('/logout');
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    
     return response.data;
   }
 };
@@ -115,73 +152,73 @@ export const authApi = {
 // Parking endpoints
 export const parkingApi = {
   getAll: async () => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${PARKING_SERVICE_URL}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data || [];
+    try {
+      const response = await parkingInstance.get('/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching parkings:', error);
+      throw error;
+    }
   },
   
   getById: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${PARKING_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await parkingInstance.get(`/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching parking:', error);
+      throw error;
+    }
   },
   
   create: async (parking: Partial<Parking>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`${PARKING_SERVICE_URL}`, parking, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await parkingInstance.post('/', parking);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating parking:', error);
+      throw error;
+    }
   },
   
   update: async (id: string, parking: Partial<Parking>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${PARKING_SERVICE_URL}/${id}`, parking, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await parkingInstance.put(`/${id}`, parking);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating parking:', error);
+      throw error;
+    }
   },
   
   delete: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.delete(`${PARKING_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
+    try {
+      const response = await parkingInstance.delete(`/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting parking:', error);
+      throw error;
+    }
   },
 
   getAllParkings: async () => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${PARKING_SERVICE_URL}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
+    try {
+      const response = await parkingInstance.get('/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all parkings:', error);
+      throw error;
+    }
   },
 
   updateAvailableSpaces: async (parkingId: string, spaces: number) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${PARKING_SERVICE_URL}/${parkingId}/spaces`, { availableSpaces: spaces }, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
+    try {
+      const response = await parkingInstance.put(`/${parkingId}/spaces`, { availableSpaces: spaces });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating available spaces:', error);
+      throw error;
+    }
   }
 };
 
@@ -254,109 +291,99 @@ export const entryApi = {
 // Car endpoints
 export const carApi = {
   getAll: async () => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${CAR_SERVICE_URL}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data || [];
+    try {
+      const response = await api.get(`${CAR_SERVICE_URL}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching cars:', error);
+      throw error;
+    }
   },
   
   getById: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${CAR_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await api.get(`${CAR_SERVICE_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching car:', error);
+      throw error;
+    }
   },
   
   getByPlateNumber: async (plateNumber: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${CAR_SERVICE_URL}/plate/${plateNumber}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await api.get(`${CAR_SERVICE_URL}/plate/${plateNumber}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching car by plate number:', error);
+      throw error;
+    }
   },
   
   create: async (car: Partial<Car>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`${CAR_SERVICE_URL}`, car, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await api.post(`${CAR_SERVICE_URL}`, car);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating car:', error);
+      throw error;
+    }
   },
   
   update: async (id: string, car: Partial<Car>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${CAR_SERVICE_URL}/${id}`, car, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await api.put(`${CAR_SERVICE_URL}/${id}`, car);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating car:', error);
+      throw error;
+    }
   },
   
   delete: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.delete(`${CAR_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
+    try {
+      const response = await api.delete(`${CAR_SERVICE_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting car:', error);
+      throw error;
+    }
   },
   
   getUserCars: async (userId: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${CAR_SERVICE_URL}/user/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data || [];
+    const response = await api.get(`${CAR_SERVICE_URL}/user/${userId}`);
+    return response.data;
   },
   
   createCar: async (car: Partial<Car>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.post(`${CAR_SERVICE_URL}`, car, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const response = await api.post(`${CAR_SERVICE_URL}/register`, {
+      plate_number: car.plate_number,
+      user_id: car.user_id,
+      make: car.make || null,
+      model: car.model || null,
+      color: car.color || null,
+      year: car.year || null
     });
     return response.data.data;
   },
   
   updateCar: async (id: string, car: Partial<Car>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${CAR_SERVICE_URL}/${id}`, car, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+    const response = await api.put(`${CAR_SERVICE_URL}/${id}`, {
+      plate_number: car.plate_number || car.plateNumber,
+      make: car.make,
+      model: car.model,
+      color: car.color,
+      year: car.year
     });
     return response.data.data;
   },
   
   deleteCar: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.delete(`${CAR_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await api.delete(`${CAR_SERVICE_URL}/${id}`);
     return response.data;
   },
   
   getAllCars: async (page = 1, limit = 10, searchQuery = '', parkingId?: string) => {
-    const token = localStorage.getItem('token');
-    
-    // Build query string
     const queryParams = new URLSearchParams();
     queryParams.append('page', page.toString());
     queryParams.append('limit', limit.toString());
@@ -370,13 +397,7 @@ export const carApi = {
     }
     
     const queryString = queryParams.toString();
-    
-    const response = await axios.get(`${CAR_SERVICE_URL}${queryString ? `?${queryString}` : ''}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
+    const response = await api.get(`${CAR_SERVICE_URL}${queryString ? `?${queryString}` : ''}`);
     return response.data;
   }
 };
@@ -489,59 +510,74 @@ export const logApi = {
 
 // Report endpoints
 export const reportApi = {
-  getDailyReport: async (date: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${REPORTING_SERVICE_URL}/reports/daily?date=${date}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+  getLogs: async (params: {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    
+    const queryString = queryParams.toString();
+    const url = `${REPORTING_SERVICE_URL}/user-activity${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get(url);
+    return response.data;
   },
-  
-  getMonthlyReport: async (month: string, year: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${REPORTING_SERVICE_URL}/reports/monthly?month=${month}&year=${year}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
-  },
-  
-  getYearlyReport: async (year: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${REPORTING_SERVICE_URL}/reports/yearly?year=${year}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
-  },
-  
-  getRevenueReport: async (params: {
+
+  getEntriesReport: async (params: {
     startDate?: string;
     endDate?: string;
     parkingId?: string;
   }) => {
-    const token = localStorage.getItem('token');
-    
-    // Build query string from params
     const queryParams = new URLSearchParams();
     if (params.startDate) queryParams.append('startDate', params.startDate);
     if (params.endDate) queryParams.append('endDate', params.endDate);
     if (params.parkingId) queryParams.append('parkingId', params.parkingId);
     
     const queryString = queryParams.toString();
-    const url = `${REPORTING_SERVICE_URL}/reports/revenue${queryString ? `?${queryString}` : ''}`;
+    const url = `${REPORTING_SERVICE_URL}/parking-usage${queryString ? `?${queryString}` : ''}`;
     
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getExitsReport: async (params: {
+    startDate?: string;
+    endDate?: string;
+    parkingId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.parkingId) queryParams.append('parkingId', params.parkingId);
     
-    return response.data.data;
+    const queryString = queryParams.toString();
+    const url = `${REPORTING_SERVICE_URL}/parking-usage${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  getRevenueReport: async (params: {
+    startDate?: string;
+    endDate?: string;
+    parkingId?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params.startDate) queryParams.append('startDate', params.startDate);
+    if (params.endDate) queryParams.append('endDate', params.endDate);
+    if (params.parkingId) queryParams.append('parkingId', params.parkingId);
+    
+    const queryString = queryParams.toString();
+    const url = `${REPORTING_SERVICE_URL}/revenue/by-parking${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get(url);
+    return response.data;
   }
 };
 

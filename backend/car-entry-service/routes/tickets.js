@@ -1,54 +1,54 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeRole } = require('../../shared/middleware/auth');
+const { authenticateJWT, authorizeRoles } = require('../../shared/middleware/auth');
 const ticketController = require('../controllers/ticketController');
 
-// Get all tickets with optional status filter
+// Get all tickets
 router.get(
   '/',
-  authenticateToken,
-  authorizeRole(['attendant', 'admin']),
+  authenticateJWT,
+  authorizeRoles(['attendant', 'admin']),
   ticketController.getTickets
 );
 
-// Get a specific ticket
+// Get ticket by ID
 router.get(
   '/:id',
-  authenticateToken,
-  authorizeRole(['attendant', 'admin']),
+  authenticateJWT,
+  authorizeRoles(['attendant', 'admin']),
   ticketController.getTicket
 );
 
-// Create a new ticket
+// Create new ticket
 router.post(
   '/',
-  authenticateToken,
-  authorizeRole(['attendant']),
+  authenticateJWT,
+  authorizeRoles(['attendant']),
   ticketController.createTicket
 );
 
-// Complete a ticket
+// Update ticket
+router.put(
+  '/:id',
+  authenticateJWT,
+  authorizeRoles(['attendant']),
+  ticketController.updateTicket
+);
+
+// Complete ticket
 router.post(
   '/:id/complete',
-  authenticateToken,
-  authorizeRole(['attendant']),
+  authenticateJWT,
+  authorizeRoles(['attendant']),
   ticketController.completeTicket
 );
 
-// Cancel a ticket
+// Cancel ticket
 router.post(
   '/:id/cancel',
-  authenticateToken,
-  authorizeRole(['attendant', 'admin']),
+  authenticateJWT,
+  authorizeRoles(['attendant', 'admin']),
   ticketController.cancelTicket
-);
-
-// Update ticket details
-router.patch(
-  '/:id',
-  authenticateToken,
-  authorizeRole(['attendant']),
-  ticketController.updateTicket
 );
 
 module.exports = router;

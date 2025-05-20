@@ -1,4 +1,3 @@
-
 const db = require('../../shared/db');
 const { logUserAction } = require('../../shared/utils/logger');
 const { paginate, paginatedResponse } = require('../../shared/utils/pagination');
@@ -117,7 +116,7 @@ exports.getCarById = async (req, res, next) => {
 // Register a new car
 exports.registerCar = async (req, res, next) => {
   try {
-    const { plate_number, user_id } = req.body;
+    const { plate_number, user_id, make, model, color, year } = req.body;
     
     // Validate input
     const errors = [];
@@ -150,8 +149,16 @@ exports.registerCar = async (req, res, next) => {
     
     // Insert car into database
     const result = await db.query(
-      'INSERT INTO cars (plate_number, user_id) VALUES ($1, $2) RETURNING id, plate_number, user_id, created_at',
-      [plate_number, user_id]
+      `INSERT INTO cars (
+        plate_number, 
+        user_id, 
+        make, 
+        model, 
+        color, 
+        year
+      ) VALUES ($1, $2, $3, $4, $5, $6) 
+      RETURNING id, plate_number, user_id, make, model, color, year, created_at`,
+      [plate_number, user_id, make, model, color, year]
     );
     
     // Log car registration

@@ -177,28 +177,28 @@ const ReportsPage: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {logs?.data.length === 0 ? (
+            {logs?.data?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-4">
                   No logs found
                 </TableCell>
               </TableRow>
             ) : (
-              logs?.data.map((log: Log) => (
+              logs?.data?.map((log: any) => (
                 <TableRow key={log.id}>
                   <TableCell>{format(new Date(log.timestamp), 'PPp')}</TableCell>
                   <TableCell>
                     <Badge variant={
-                      log.action_type === 'entry' ? "default" : 
-                      log.action_type === 'exit' ? "secondary" : 
-                      log.action_type === 'payment' ? "success" : 
+                      log.action === 'entry' ? "default" : 
+                      log.action === 'exit' ? "secondary" : 
+                      log.action === 'payment' ? "success" : 
                       "outline"
                     }>
-                      {log.action_type}
+                      {log.action}
                     </Badge>
                   </TableCell>
-                  <TableCell>{log.user_name || 'System'}</TableCell>
-                  <TableCell>{log.details}</TableCell>
+                  <TableCell>{log.user?.firstname} {log.user?.lastname}</TableCell>
+                  <TableCell>{log.description}</TableCell>
                 </TableRow>
               ))
             )}
@@ -206,7 +206,7 @@ const ReportsPage: React.FC = () => {
         </Table>
         
         {/* Pagination */}
-        {logs && logs.totalPages > 1 && (
+        {logs?.pagination && (
           <div className="flex justify-center mt-6">
             <div className="flex gap-2">
               <Button
@@ -217,7 +217,7 @@ const ReportsPage: React.FC = () => {
                 Previous
               </Button>
               <div className="flex items-center gap-2">
-                {Array.from({ length: logs.totalPages }, (_, i) => i + 1).map((page) => (
+                {Array.from({ length: logs.pagination.totalPages }, (_, i) => i + 1).map((page) => (
                   <Button
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
@@ -231,7 +231,7 @@ const ReportsPage: React.FC = () => {
               <Button
                 variant="outline"
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === logs.totalPages}
+                disabled={currentPage === logs.pagination.totalPages}
               >
                 Next
               </Button>
@@ -245,15 +245,26 @@ const ReportsPage: React.FC = () => {
   const renderEntriesReport = () => {
     if (!entriesReport?.data) return null;
     
-    const chartData = entriesReport.data.dailyStats.map(stat => ({
-      date: format(new Date(stat.date), 'MMM dd'),
-      entries: stat.count
-    }));
+    const entries = entriesReport.data.filter((entry: any) => entry.status === 'active');
+    const chartData = entries.reduce((acc: any[], entry: any) => {
+      const date = format(new Date(entry.entry_time), 'MMM dd');
+      const existing = acc.find(item => item.date === date);
+      if (existing) {
+        existing.entries++;
+      } else {
+        acc.push({ date, entries: 1 });
+      }
+      return acc;
+    }, []);
     
-    const parkingDistribution = entriesReport.data.parkingDistribution;
-    const pieData = Object.keys(parkingDistribution).map(key => ({
-      name: key,
-      value: parkingDistribution[key]
+    const parkingDistribution = entries.reduce((acc: any, entry: any) => {
+      acc[entry.parking_name] = (acc[entry.parking_name] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const pieData = Object.entries(parkingDistribution).map(([name, value]) => ({
+      name,
+      value
     }));
 
     return (
@@ -264,7 +275,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Total Entries</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{entriesReport.data.totalEntries}</p>
+              <p className="text-3xl font-bold">{entries.length}</p>
             </CardContent>
           </Card>
           
@@ -273,7 +284,9 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Unique Cars</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{entriesReport.data.uniqueCars}</p>
+              <p className="text-3xl font-bold">
+                {new Set(entries.map((entry: any) => entry.plate_number)).size}
+              </p>
             </CardContent>
           </Card>
           
@@ -282,7 +295,9 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Average Daily Entries</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{entriesReport.data.avgDailyEntries.toFixed(1)}</p>
+              <p className="text-3xl font-bold">
+                {(entries.length / chartData.length).toFixed(1)}
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -311,37 +326,35 @@ const ReportsPage: React.FC = () => {
           </CardContent>
         </Card>
         
-        {pieData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Entries by Parking Lot</CardTitle>
-              <CardDescription>Distribution of entries across parking lots</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChartComponent>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => [`${value} entries`, 'Count']} />
-                  </PieChartComponent>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Entries by Parking Lot</CardTitle>
+            <CardDescription>Distribution of entries across parking lots</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChartComponent>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} entries`, 'Count']} />
+                </PieChartComponent>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
         
         <Card>
           <CardHeader>
@@ -355,23 +368,27 @@ const ReportsPage: React.FC = () => {
                   <TableHead>Date & Time</TableHead>
                   <TableHead>Plate Number</TableHead>
                   <TableHead>Parking</TableHead>
-                  <TableHead>Registered By</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entriesReport.data.recentEntries.length === 0 ? (
+                {entries.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-4">
                       No entries found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  entriesReport.data.recentEntries.map((entry: Entry) => (
+                  entries.slice(0, 10).map((entry: any) => (
                     <TableRow key={entry.id}>
                       <TableCell>{format(new Date(entry.entry_time), 'PPp')}</TableCell>
                       <TableCell>{entry.plate_number}</TableCell>
                       <TableCell>{entry.parking_name}</TableCell>
-                      <TableCell>{entry.registered_by || 'System'}</TableCell>
+                      <TableCell>
+                        <Badge variant={entry.status === 'active' ? 'default' : 'secondary'}>
+                          {entry.status}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -386,11 +403,21 @@ const ReportsPage: React.FC = () => {
   const renderExitsReport = () => {
     if (!exitsReport?.data) return null;
     
-    const chartData = exitsReport.data.dailyStats.map(stat => ({
-      date: format(new Date(stat.date), 'MMM dd'),
-      exits: stat.count
-    }));
+    const exits = exitsReport.data.filter((exit: any) => exit.status === 'completed');
+    const chartData = exits.reduce((acc: any[], exit: any) => {
+      const date = format(new Date(exit.exit_time), 'MMM dd');
+      const existing = acc.find(item => item.date === date);
+      if (existing) {
+        existing.exits++;
+      } else {
+        acc.push({ date, exits: 1 });
+      }
+      return acc;
+    }, []);
     
+    const totalRevenue = exits.reduce((sum: number, exit: any) => sum + (exit.charged_amount || 0), 0);
+    const totalDuration = exits.reduce((sum: number, exit: any) => sum + (exit.duration_hours || 0), 0);
+
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -399,7 +426,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Total Exits</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{exitsReport.data.totalExits}</p>
+              <p className="text-3xl font-bold">{exits.length}</p>
             </CardContent>
           </Card>
           
@@ -408,7 +435,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{formatCurrency(exitsReport.data.totalRevenue)}</p>
+              <p className="text-3xl font-bold">{formatCurrency(totalRevenue)}</p>
             </CardContent>
           </Card>
           
@@ -418,7 +445,7 @@ const ReportsPage: React.FC = () => {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">
-                {Math.floor(exitsReport.data.avgDuration)}h {Math.round((exitsReport.data.avgDuration % 1) * 60)}m
+                {Math.floor(totalDuration / exits.length)}h {Math.round(((totalDuration / exits.length) % 1) * 60)}m
               </p>
             </CardContent>
           </Card>
@@ -465,14 +492,14 @@ const ReportsPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {exitsReport.data.recentExits.length === 0 ? (
+                {exits.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-4">
                       No exits found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  exitsReport.data.recentExits.map((exit: any) => (
+                  exits.slice(0, 10).map((exit: any) => (
                     <TableRow key={exit.id}>
                       <TableCell>{format(new Date(exit.exit_time), 'PPp')}</TableCell>
                       <TableCell>{exit.plate_number}</TableCell>
@@ -480,7 +507,7 @@ const ReportsPage: React.FC = () => {
                       <TableCell>
                         {Math.floor(exit.duration_hours)}h {Math.round((exit.duration_hours % 1) * 60)}m
                       </TableCell>
-                      <TableCell>{formatCurrency(exit.amount)}</TableCell>
+                      <TableCell>{formatCurrency(exit.charged_amount)}</TableCell>
                     </TableRow>
                   ))
                 )}
@@ -495,11 +522,15 @@ const ReportsPage: React.FC = () => {
   const renderRevenueReport = () => {
     if (!revenueReport?.data) return null;
     
-    const chartData = revenueReport.data.dailyRevenue.map(stat => ({
+    const chartData = revenueReport.data.map((stat: any) => ({
       date: format(new Date(stat.date), 'MMM dd'),
-      revenue: stat.amount
+      revenue: parseFloat(stat.total_revenue)
     }));
     
+    const totalRevenue = chartData.reduce((sum: number, item: any) => sum + item.revenue, 0);
+    const avgDailyRevenue = totalRevenue / chartData.length;
+    const totalTransactions = revenueReport.data.reduce((sum: number, stat: any) => sum + parseInt(stat.total_entries), 0);
+
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -508,7 +539,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{formatCurrency(revenueReport.data.totalRevenue)}</p>
+              <p className="text-3xl font-bold">{formatCurrency(totalRevenue)}</p>
             </CardContent>
           </Card>
           
@@ -517,7 +548,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Average Daily Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{formatCurrency(revenueReport.data.avgDailyRevenue)}</p>
+              <p className="text-3xl font-bold">{formatCurrency(avgDailyRevenue)}</p>
             </CardContent>
           </Card>
           
@@ -526,7 +557,7 @@ const ReportsPage: React.FC = () => {
               <CardTitle className="text-lg">Total Transactions</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{revenueReport.data.totalTransactions}</p>
+              <p className="text-3xl font-bold">{totalTransactions}</p>
             </CardContent>
           </Card>
         </div>
@@ -557,8 +588,8 @@ const ReportsPage: React.FC = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>Top Revenue Generating Parking Lots</CardTitle>
-            <CardDescription>Parking lots with highest revenue</CardDescription>
+            <CardTitle>Parking Lot Revenue</CardTitle>
+            <CardDescription>Revenue by parking lot</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -571,19 +602,19 @@ const ReportsPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {revenueReport.data.parkingRevenue.length === 0 ? (
+                {revenueReport.data.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-4">
                       No revenue data found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  revenueReport.data.parkingRevenue.map((item: any, index: number) => (
+                  revenueReport.data.map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell>{item.parking_name}</TableCell>
-                      <TableCell>{formatCurrency(item.total_revenue)}</TableCell>
-                      <TableCell>{item.transactions}</TableCell>
-                      <TableCell>{formatCurrency(item.avg_transaction)}</TableCell>
+                      <TableCell>{formatCurrency(parseFloat(item.total_revenue))}</TableCell>
+                      <TableCell>{item.total_entries}</TableCell>
+                      <TableCell>{formatCurrency(parseFloat(item.avg_revenue))}</TableCell>
                     </TableRow>
                   ))
                 )}

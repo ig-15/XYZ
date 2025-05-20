@@ -1,37 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeRole } = require('../../shared/middleware/auth');
+const { authenticateJWT, authorizeRoles } = require('../../shared/middleware/auth');
 const settingsController = require('../controllers/settingsController');
 
 // Get user settings
 router.get(
-  '/user/settings',
-  authenticateToken,
-  authorizeRole(['user']),
+  '/users/settings',
+  authenticateJWT,
+  authorizeRoles(['user']),
   settingsController.getUserSettings
 );
 
 // Update user settings
-router.patch(
-  '/user/settings',
-  authenticateToken,
-  authorizeRole(['user']),
+router.put(
+  '/users/settings',
+  authenticateJWT,
+  authorizeRoles(['user']),
   settingsController.updateUserSettings
 );
 
 // Get attendant settings
 router.get(
-  '/attendant/settings',
-  authenticateToken,
-  authorizeRole(['attendant']),
+  '/attendants/settings',
+  authenticateJWT,
+  authorizeRoles(['attendant']),
   settingsController.getAttendantSettings
 );
 
 // Update attendant settings
-router.patch(
-  '/attendant/settings',
-  authenticateToken,
-  authorizeRole(['attendant']),
+router.put(
+  '/attendants/settings',
+  authenticateJWT,
+  authorizeRoles(['attendant']),
   settingsController.updateAttendantSettings
 );
 

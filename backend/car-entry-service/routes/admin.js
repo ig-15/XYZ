@@ -1,37 +1,37 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, authorizeRole } = require('../../shared/middleware/auth');
+const { authenticateJWT, authorizeRoles } = require('../../shared/middleware/auth');
 const adminController = require('../controllers/adminController');
 
 // Get all cars with filters
 router.get(
   '/cars',
-  authenticateToken,
-  authorizeRole(['admin']),
+  authenticateJWT,
+  authorizeRoles(['admin']),
   adminController.getAllCars
 );
 
 // Get all tickets with filters
 router.get(
   '/tickets',
-  authenticateToken,
-  authorizeRole(['admin']),
+  authenticateJWT,
+  authorizeRoles(['admin']),
   adminController.getAllTickets
 );
 
 // Get ticket statistics
 router.get(
   '/tickets/stats',
-  authenticateToken,
-  authorizeRole(['admin']),
+  authenticateJWT,
+  authorizeRoles(['admin']),
   adminController.getTicketStats
 );
 
 // Get car statistics
 router.get(
   '/cars/stats',
-  authenticateToken,
-  authorizeRole(['admin']),
+  authenticateJWT,
+  authorizeRoles(['admin']),
   adminController.getCarStats
 );
 
