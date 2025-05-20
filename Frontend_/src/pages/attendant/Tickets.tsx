@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from 'date-fns';
+import api from '@/lib/api';
 
 interface Ticket {
   id: string;
@@ -23,18 +24,14 @@ export default function AttendantTickets() {
   const { data: tickets, isLoading, error } = useQuery<Ticket[]>({
     queryKey: ['tickets', filter],
     queryFn: async () => {
-      const response = await fetch(`/api/tickets?status=${filter}`);
-      if (!response.ok) throw new Error('Failed to fetch tickets');
-      return response.json();
+      const response = await api.get(`/tickets?status=${filter}`);
+      return response.data;
     }
   });
 
   const handleCompleteTicket = async (ticketId: string) => {
     try {
-      const response = await fetch(`/api/tickets/${ticketId}/complete`, {
-        method: 'POST',
-      });
-      if (!response.ok) throw new Error('Failed to complete ticket');
+      await api.post(`/tickets/${ticketId}/complete`);
       toast({
         title: "Success",
         description: "Ticket completed successfully",
@@ -105,7 +102,7 @@ export default function AttendantTickets() {
                         ticket.status === 'active'
                           ? 'default'
                           : ticket.status === 'completed'
-                          ? 'success'
+                          ? 'secondary'
                           : 'destructive'
                       }
                     >

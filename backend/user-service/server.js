@@ -20,9 +20,6 @@ app.use(cors(config.CORS));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Apply authentication middleware to all routes
-app.use(authenticateJWT);
-
 // Swagger definition
 const swaggerOptions = {
   definition: {
@@ -53,6 +50,14 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+// Apply authentication middleware to all routes except Swagger
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api-docs')) {
+    return next();
+  }
+  authenticateJWT(req, res, next);
+});
 
 // Routes
 app.use('/api', userRoutes);
