@@ -18,16 +18,6 @@ import DataTable from '@/components/tables/DataTable';
 import { TableColumn, Parking } from '@/types';
 import { toast } from '@/components/ui/sonner';
 import { Map, Plus, Pencil } from 'lucide-react';
-import { z } from 'zod';
-
-// Form validation schema
-const parkingSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
-  name: z.string().min(1, 'Name is required'),
-  location: z.string().min(1, 'Location is required'),
-  total_spaces: z.number().min(1, 'Total spaces must be at least 1'),
-  fee_per_hour: z.number().min(0, 'Fee per hour must be 0 or greater'),
-});
 
 const ParkingSpaces = () => {
   const queryClient = useQueryClient();
@@ -38,10 +28,10 @@ const ParkingSpaces = () => {
     code: '',
     name: '',
     location: '',
-    total_spaces: 0,
-    fee_per_hour: 0,
+    totalSpaces: 0,
+    availableSpaces: 0,
+    feePerHour: 0,
   });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Fetch parkings
   const { data: parkings, isLoading } = useQuery({
@@ -58,19 +48,6 @@ const ParkingSpaces = () => {
       resetForm();
       toast.success('Parking space created successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to create parking space';
-      const errors = error.response?.data?.errors || [];
-      if (errors.length > 0) {
-        setFormErrors(errors.reduce((acc: Record<string, string>, err: string) => {
-          const [field] = err.split(' ');
-          acc[field.toLowerCase()] = err;
-          return acc;
-        }, {}));
-      } else {
-        toast.error(message);
-      }
-    }
   });
 
   // Update mutation
@@ -84,19 +61,6 @@ const ParkingSpaces = () => {
       resetForm();
       toast.success('Parking space updated successfully');
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.message || 'Failed to update parking space';
-      const errors = error.response?.data?.errors || [];
-      if (errors.length > 0) {
-        setFormErrors(errors.reduce((acc: Record<string, string>, err: string) => {
-          const [field] = err.split(' ');
-          acc[field.toLowerCase()] = err;
-          return acc;
-        }, {}));
-      } else {
-        toast.error(message);
-      }
-    }
   });
 
   const resetForm = () => {
@@ -104,50 +68,24 @@ const ParkingSpaces = () => {
       code: '',
       name: '',
       location: '',
-      total_spaces: 0,
-      fee_per_hour: 0,
+      totalSpaces: 0,
+      availableSpaces: 0,
+      feePerHour: 0,
     });
-    setFormErrors({});
   };
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFormErrors({});
-    
-    try {
-      const validatedData = parkingSchema.parse(formData);
-      createMutation.mutate(validatedData);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const errors = error.errors.reduce((acc: Record<string, string>, err) => {
-          acc[err.path[0]] = err.message;
-          return acc;
-        }, {});
-        setFormErrors(errors);
-      }
-    }
+    createMutation.mutate(formData);
   };
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFormErrors({});
-    
     if (selectedParking) {
-      try {
-        const validatedData = parkingSchema.parse(formData);
-        updateMutation.mutate({ 
-          id: selectedParking.id, 
-          parking: validatedData 
-        });
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          const errors = error.errors.reduce((acc: Record<string, string>, err) => {
-            acc[err.path[0]] = err.message;
-            return acc;
-          }, {});
-          setFormErrors(errors);
-        }
-      }
+      updateMutation.mutate({ 
+        id: selectedParking.id, 
+        parking: formData 
+      });
     }
   };
 
@@ -157,10 +95,10 @@ const ParkingSpaces = () => {
       code: parking.code,
       name: parking.name,
       location: parking.location,
-      total_spaces: parking.total_spaces || parking.totalSpaces || 0,
-      fee_per_hour: parking.fee_per_hour || parking.feePerHour || 0,
+      totalSpaces: parking.totalSpaces,
+      availableSpaces: parking.availableSpaces,
+      feePerHour: parking.feePerHour,
     });
-    setFormErrors({});
     setIsEditOpen(true);
   };
 
@@ -180,19 +118,15 @@ const ParkingSpaces = () => {
     },
     {
       header: 'Total Spaces',
-      accessorKey: 'total_spaces',
-      cell: ({ row }) => {
-        const total = row.original.total_spaces || row.original.totalSpaces || 0;
-        return total;
-      }
+      accessorKey: 'totalSpaces',
     },
     {
       header: 'Available Spaces',
-      accessorKey: 'available_spaces',
+      accessorKey: 'availableSpaces',
       cell: ({ row }) => {
-        const available = row.original.available_spaces || row.original.availableSpaces || 0;
-        const total = row.original.total_spaces || row.original.totalSpaces || 0;
-        const percentage = total > 0 ? Math.round((available / total) * 100) : 0;
+        const available = row.original.availableSpaces;
+        const total = row.original.totalSpaces;
+        const percentage = Math.round((available / total) * 100);
         
         let colorClass = 'text-green-500';
         if (percentage < 20) {
@@ -211,11 +145,8 @@ const ParkingSpaces = () => {
     },
     {
       header: 'Fee ($/hr)',
-      accessorKey: 'fee_per_hour',
-      cell: ({ row }) => {
-        const fee = row.original.fee_per_hour || row.original.feePerHour || 0;
-        return `$${fee.toFixed(2)}`;
-      }
+      accessorKey: 'feePerHour',
+      cell: ({ getValue }) => `$${getValue()}`,
     },
     {
       header: 'Actions',
@@ -262,9 +193,6 @@ const ParkingSpaces = () => {
                       onChange={(e) => setFormData({...formData, code: e.target.value})}
                       required
                     />
-                    {formErrors.code && (
-                      <p className="text-sm text-red-500">{formErrors.code}</p>
-                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
@@ -274,9 +202,6 @@ const ParkingSpaces = () => {
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                       required
                     />
-                    {formErrors.name && (
-                      <p className="text-sm text-red-500">{formErrors.name}</p>
-                    )}
                   </div>
                 </div>
                 
@@ -288,40 +213,39 @@ const ParkingSpaces = () => {
                     onChange={(e) => setFormData({...formData, location: e.target.value})}
                     required
                   />
-                  {formErrors.location && (
-                    <p className="text-sm text-red-500">{formErrors.location}</p>
-                  )}
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="total_spaces">Total Spaces</Label>
+                    <Label htmlFor="totalSpaces">Total Spaces</Label>
                     <Input 
-                      id="total_spaces" 
+                      id="totalSpaces" 
                       type="number"
-                      min="1"
-                      value={formData.total_spaces} 
-                      onChange={(e) => setFormData({...formData, total_spaces: parseInt(e.target.value) || 0})}
+                      value={formData.totalSpaces} 
+                      onChange={(e) => setFormData({...formData, totalSpaces: parseInt(e.target.value) || 0})}
                       required
                     />
-                    {formErrors.total_spaces && (
-                      <p className="text-sm text-red-500">{formErrors.total_spaces}</p>
-                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fee_per_hour">Fee ($/hr)</Label>
+                    <Label htmlFor="availableSpaces">Available Spaces</Label>
                     <Input 
-                      id="fee_per_hour" 
+                      id="availableSpaces" 
                       type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.fee_per_hour} 
-                      onChange={(e) => setFormData({...formData, fee_per_hour: parseFloat(e.target.value) || 0})}
+                      value={formData.availableSpaces} 
+                      onChange={(e) => setFormData({...formData, availableSpaces: parseInt(e.target.value) || 0})}
                       required
                     />
-                    {formErrors.fee_per_hour && (
-                      <p className="text-sm text-red-500">{formErrors.fee_per_hour}</p>
-                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="feePerHour">Fee ($/hr)</Label>
+                    <Input 
+                      id="feePerHour" 
+                      type="number"
+                      step="0.01"
+                      value={formData.feePerHour} 
+                      onChange={(e) => setFormData({...formData, feePerHour: parseFloat(e.target.value) || 0})}
+                      required
+                    />
                   </div>
                 </div>
                 
@@ -390,25 +314,35 @@ const ParkingSpaces = () => {
               />
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-total_spaces">Total Spaces</Label>
+                <Label htmlFor="edit-totalSpaces">Total Spaces</Label>
                 <Input 
-                  id="edit-total_spaces" 
+                  id="edit-totalSpaces" 
                   type="number"
-                  value={formData.total_spaces} 
-                  onChange={(e) => setFormData({...formData, total_spaces: parseInt(e.target.value) || 0})}
+                  value={formData.totalSpaces} 
+                  onChange={(e) => setFormData({...formData, totalSpaces: parseInt(e.target.value) || 0})}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-fee_per_hour">Fee ($/hr)</Label>
+                <Label htmlFor="edit-availableSpaces">Available Spaces</Label>
                 <Input 
-                  id="edit-fee_per_hour" 
+                  id="edit-availableSpaces" 
+                  type="number"
+                  value={formData.availableSpaces} 
+                  onChange={(e) => setFormData({...formData, availableSpaces: parseInt(e.target.value) || 0})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-feePerHour">Fee ($/hr)</Label>
+                <Input 
+                  id="edit-feePerHour" 
                   type="number"
                   step="0.01"
-                  value={formData.fee_per_hour} 
-                  onChange={(e) => setFormData({...formData, fee_per_hour: parseFloat(e.target.value) || 0})}
+                  value={formData.feePerHour} 
+                  onChange={(e) => setFormData({...formData, feePerHour: parseFloat(e.target.value) || 0})}
                   required
                 />
               </div>

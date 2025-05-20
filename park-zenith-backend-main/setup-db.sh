@@ -10,7 +10,7 @@ fi
 DB_HOST=${DB_HOST:-localhost}
 DB_PORT=${DB_PORT:-5432}
 DB_USERNAME=${DB_USERNAME:-postgres}
-DB_PASSWORD=${DB_PASSWORD:-postgres}
+DB_PASSWORD=${DB_PASSWORD:-1234}
 DB_DATABASE=${DB_DATABASE:-parking_management}
 
 echo "Setting up database for Parking Management System..."

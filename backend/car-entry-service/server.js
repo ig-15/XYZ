@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
@@ -11,8 +12,6 @@ const { errorHandler, notFoundHandler } = require('../shared/middleware/error');
 const entryRoutes = require('./routes/entries');
 const ticketRoutes = require('./routes/tickets');
 const carRoutes = require('./routes/cars');
-const adminRoutes = require('./routes/admin');
-const reportRoutes = require('./routes/reports');
 
 // Initialize express app
 const app = express();
@@ -57,8 +56,6 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use('/api/entries', entryRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/cars', carRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/reports', reportRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

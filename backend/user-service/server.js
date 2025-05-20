@@ -1,3 +1,4 @@
+
 const express = require('express');
 const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
@@ -6,11 +7,9 @@ const swaggerJsdoc = require('swagger-jsdoc');
 // Import configuration
 const config = require('../shared/config');
 const { errorHandler, notFoundHandler } = require('../shared/middleware/error');
-const { authenticateJWT } = require('../shared/middleware/auth');
 
 // Import routes
 const userRoutes = require('./routes/users');
-const settingsRoutes = require('./routes/settings');
 
 // Initialize express app
 const app = express();
@@ -51,17 +50,8 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Apply authentication middleware to all routes except Swagger
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api-docs')) {
-    return next();
-  }
-  authenticateJWT(req, res, next);
-});
-
 // Routes
-app.use('/api', userRoutes);
-app.use('/api', settingsRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -1,3 +1,4 @@
+
 const dotenv = require('dotenv');
 dotenv.config();
 
@@ -16,9 +17,6 @@ module.exports = {
     expiresIn: process.env.JWT_EXPIRATION || '1d',
   },
   CORS: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:8081',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    origin: process.env.CORS_ORIGIN || '*',
   },
 };
