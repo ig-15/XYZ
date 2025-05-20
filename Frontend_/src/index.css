@@ -1,0 +1,129 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Warm theme color scheme */
+    --background: 38 33% 97%;
+    --foreground: 30 12% 22%;
+
+    --card: 38 33% 99%;
+    --card-foreground: 30 12% 22%;
+
+    --popover: 38 33% 99%;
+    --popover-foreground: 30 12% 22%;
+
+    --primary: 27 55% 46%;
+    --primary-foreground: 38 33% 97%;
+
+    --secondary: 120 5% 88%;
+    --secondary-foreground: 30 12% 22%;
+
+    --muted: 38 16% 92%;
+    --muted-foreground: 30 10% 42%;
+
+    --accent: 27 35% 92%;
+    --accent-foreground: 30 12% 22%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 38 33% 97%;
+
+    --border: 30 10% 90%;
+    --input: 30 10% 90%;
+    --ring: 27 55% 46%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 27 35% 96%;
+    --sidebar-foreground: 30 12% 22%;
+    --sidebar-primary: 27 55% 46%;
+    --sidebar-primary-foreground: 38 33% 97%;
+    --sidebar-accent: 27 35% 92%;
+    --sidebar-accent-foreground: 30 12% 22%;
+    --sidebar-border: 30 10% 90%;
+    --sidebar-ring: 27 55% 46%;
+  }
+
+  .dark {
+    --background: 30 12% 8%;
+    --foreground: 38 33% 97%;
+
+    --card: 30 12% 10%;
+    --card-foreground: 38 33% 97%;
+
+    --popover: 30 12% 10%;
+    --popover-foreground: 38 33% 97%;
+
+    --primary: 27 55% 46%;
+    --primary-foreground: 38 33% 97%;
+
+    --secondary: 120 5% 20%;
+    --secondary-foreground: 38 33% 97%;
+
+    --muted: 30 10% 16%;
+    --muted-foreground: 30 10% 70%;
+
+    --accent: 27 35% 16%;
+    --accent-foreground: 38 33% 97%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 38 33% 97%;
+
+    --border: 30 10% 23%;
+    --input: 30 10% 23%;
+    --ring: 27 55% 46%;
+
+    --sidebar-background: 30 12% 12%;
+    --sidebar-foreground: 38 33% 97%;
+    --sidebar-primary: 27 55% 46%;
+    --sidebar-primary-foreground: 38 33% 97%;
+    --sidebar-accent: 27 35% 16%;
+    --sidebar-accent-foreground: 38 33% 97%;
+    --sidebar-border: 30 10% 23%;
+    --sidebar-ring: 27 55% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+
+  h1 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h2 {
+    @apply text-2xl md:text-3xl;
+  }
+
+  h3 {
+    @apply text-xl md:text-2xl;
+  }
+
+  h4 {
+    @apply text-lg md:text-xl;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
