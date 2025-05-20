@@ -14,7 +14,7 @@ import {
 // Get API URLs from environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://localhost:3001/api/auth';
-const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:3002/api/users';
+const USER_SERVICE_URL = import.meta.env.VITE_USER_SERVICE_URL || 'http://localhost:3002/api';
 const PARKING_SERVICE_URL = import.meta.env.VITE_PARKING_SERVICE_URL || 'http://localhost:3003/api/parkings';
 const CAR_ENTRY_SERVICE_URL = import.meta.env.VITE_CAR_ENTRY_SERVICE_URL || 'http://localhost:3004/api/entries';
 const REPORTING_SERVICE_URL = import.meta.env.VITE_REPORTING_SERVICE_URL || 'http://localhost:3005/api/reports';
@@ -618,53 +618,53 @@ export const dashboardApi = {
 // User endpoints
 export const userApi = {
   getAll: async () => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${USER_SERVICE_URL}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data || [];
+    try {
+      const response = await userInstance.get('/users');
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
   },
   
   getById: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.get(`${USER_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await userInstance.get(`/users/${id}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      throw error;
+    }
   },
   
   update: async (id: string, userData: Partial<User>) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${USER_SERVICE_URL}/${id}`, userData, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await userInstance.put(`/users/${id}`, userData);
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw error;
+    }
   },
   
   updateRole: async (id: string, role: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(`${USER_SERVICE_URL}/${id}/role`, { role }, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data.data;
+    try {
+      const response = await userInstance.put(`/users/${id}/role`, { role });
+      return response.data.data;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
   },
   
   delete: async (id: string) => {
-    const token = localStorage.getItem('token');
-    const response = await axios.delete(`${USER_SERVICE_URL}/${id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    return response.data;
+    try {
+      const response = await userInstance.delete(`/users/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      throw error;
+    }
   }
 };
 

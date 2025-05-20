@@ -6,6 +6,7 @@ const swaggerJsdoc = require('swagger-jsdoc');
 // Import configuration
 const config = require('../shared/config');
 const { errorHandler, notFoundHandler } = require('../shared/middleware/error');
+const { authenticateJWT } = require('../shared/middleware/auth');
 
 // Import routes
 const userRoutes = require('./routes/users');
@@ -18,6 +19,9 @@ const app = express();
 app.use(cors(config.CORS));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Apply authentication middleware to all routes
+app.use(authenticateJWT);
 
 // Swagger definition
 const swaggerOptions = {
