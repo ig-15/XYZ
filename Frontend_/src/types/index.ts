@@ -42,6 +42,7 @@ export interface Car {
   year?: number;
   is_parked?: boolean;
   owner_name?: string;
+  last_parking_name?: string;
   createdAt?: string;
 }
 

@@ -52,14 +52,24 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    console.error('API error:', error.response?.status, error.response?.data || error.message);
     const message = error.response?.data?.message || 'An error occurred';
-    toast.error(message);
+    
+    // Only show toast for non-auth errors or when explicitly needed
+    if (!error.config.url?.includes('/login')) {
+      toast.error(message);
+    }
     
     if (error.response?.status === 401) {
       // Handle unauthorized (logout user)
+      console.log('Unauthorized access detected, logging out');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     
     return Promise.reject(error);
@@ -96,13 +106,24 @@ const createServiceInstance = (baseURL: string) => {
       return response;
     },
     (error) => {
+      console.error('API error:', error.response?.status, error.response?.data || error.message);
       const message = error.response?.data?.message || 'An error occurred';
-      toast.error(message);
+      
+      // Only show toast for non-auth errors or when explicitly needed
+      if (!error.config.url?.includes('/login')) {
+        toast.error(message);
+      }
       
       if (error.response?.status === 401) {
+        // Handle unauthorized (logout user)
+        console.log('Unauthorized access detected, logging out');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        
+        // Only redirect if not already on login page
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
       
       return Promise.reject(error);
@@ -126,9 +147,76 @@ const logInstance = createServiceInstance(LOG_SERVICE_URL);
 // Auth endpoints
 export const authApi = {
   login: async (email: string, password: string) => {
-    const response = await authInstance.post('/login', { email, password });
-    const { user, token } = response.data;
-    return { user, token };
+    try {
+      console.log('Making login API request to:', AUTH_SERVICE_URL);
+      
+      // Try with a direct axios call without withCredentials first
+      try {
+        const response = await axios.post(`${AUTH_SERVICE_URL}/login`, { email, password }, { 
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          // Don't use withCredentials for the login request
+          withCredentials: false
+        });
+        
+        console.log('Login API response status:', response.status);
+        
+        // Validate response data
+        const { user, token } = response.data;
+        if (!user || !token) {
+          throw new Error('Invalid response from server: missing user or token data');
+        }
+        
+        return { user, token };
+      } catch (firstError) {
+        console.error('First login attempt failed:', firstError.message);
+        
+        // If the first attempt fails, try with the service instance
+        try {
+          console.log('Trying second login approach with authInstance');
+          const response = await authInstance.post('/login', { email, password }, { 
+            timeout: 10000,
+            // Try without withCredentials for the second attempt
+            withCredentials: false
+          });
+          
+          console.log('Second login attempt succeeded with status:', response.status);
+          
+          // Validate response data
+          const { user, token } = response.data;
+          if (!user || !token) {
+            throw new Error('Invalid response from server: missing user or token data');
+          }
+          
+          return { user, token };
+        } catch (secondError) {
+          console.error('Second login attempt failed:', secondError.message);
+          throw secondError;
+        }
+      }
+    } catch (error: any) {
+      console.error('Login API error details:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        isAxiosError: error.isAxiosError,
+        code: error.code
+      });
+      
+      // Enhance error message based on status code or error type
+      if (error.response?.status === 401) {
+        throw new Error('Invalid email or password. Please try again.');
+      } else if (error.response?.status === 429) {
+        throw new Error('Too many login attempts. Please try again later.');
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('Request timed out. Please try again.');
+      } else if (error.message.includes('Network Error') || !error.response) {
+        throw new Error(`Network error: ${error.message}. Please check your connection and try again.`);
+      }
+      throw error;
+    }
   },
   
   register: async (userData: Partial<User> & { password: string }) => {
@@ -358,7 +446,7 @@ export const carApi = {
   createCar: async (car: Partial<Car>) => {
     const response = await api.post(`${CAR_SERVICE_URL}/register`, {
       plate_number: car.plate_number,
-      user_id: car.user_id,
+      userId: car.userId,
       make: car.make || null,
       model: car.model || null,
       color: car.color || null,

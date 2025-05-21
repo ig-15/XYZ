@@ -267,7 +267,7 @@ const TicketsPage: React.FC = () => {
                           </TableCell>
                           <TableCell>{ticket.amount ? formatCurrency(ticket.amount) : 'N/A'}</TableCell>
                           <TableCell>
-                            <Badge variant={ticket.status === 'paid' ? "success" : ticket.status === 'pending' ? "warning" : "default"}>
+                            <Badge variant={ticket.status === 'paid' ? "default" : ticket.status === 'pending' ? "secondary" : "outline"}>
                               {ticket.status}
                             </Badge>
                           </TableCell>

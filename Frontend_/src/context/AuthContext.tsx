@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthState, User, UserRole } from '@/types';
@@ -72,7 +71,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (userData: Partial<User> & { password: string }) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,15 +87,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (token && userData) {
         try {
           const user = JSON.parse(userData) as User;
+          console.log('Found existing auth session, restoring user state');
+          
+          // Validate token with a backend call if needed
+          // Uncomment the following to validate token on each page load
+          // await authApi.getCurrentUser();
+          
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: { user, token },
           });
         } catch (error) {
+          console.error('Error restoring auth session:', error);
+          // Clear invalid auth data
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          dispatch({ type: 'AUTH_CHECKED' });
         }
       } else {
+        console.log('No existing auth session found');
         dispatch({ type: 'AUTH_CHECKED' });
       }
     };
@@ -107,18 +116,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     dispatch({ type: 'LOGIN_START' });
     try {
+      console.log('Attempting login with:', { email });
       const { user, token } = await authApi.login(email, password);
+      console.log('Login successful, received token and user data');
+      
+      // Store auth data in localStorage
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: { user, token },
       });
       toast.success('Login successful!');
     } catch (error: any) {
+      console.error('Login error:', error);
+      const errorMessage = error?.response?.data?.message || 
+                          (error?.message || 'Login failed. Please check your credentials and try again.');
+      
+      toast.error(errorMessage);
       dispatch({
         type: 'LOGIN_FAILURE',
-        payload: error?.response?.data?.message || 'Login failed',
+        payload: errorMessage,
       });
     }
   };
@@ -137,11 +156,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    dispatch({ type: 'LOGOUT' });
-    toast.success('Logged out successfully!');
+  const logout = async () => {
+    try {
+      // Call the API logout endpoint
+      await authApi.logout();
+      // Then clear local storage and update state
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      dispatch({ type: 'LOGOUT' });
+      toast.success('Logged out successfully!');
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if the API call fails, we should still log out locally
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      dispatch({ type: 'LOGOUT' });
+      toast.success('Logged out successfully!');
+    }
   };
 
   return (

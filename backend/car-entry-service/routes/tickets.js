@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const ticketsController = require('../controllers/tickets');
+const ticketController = require('../controllers/tickets');
 const { authenticateJWT, authorizeRoles } = require('../../shared/middleware/auth');
 
 // Apply authentication to all routes
@@ -64,7 +64,7 @@ router.use(authenticateJWT);
  *       401:
  *         description: Unauthorized
  */
-router.get('/', authorizeRoles(['admin', 'attendant']), ticketsController.getAllTickets);
+router.get('/', authorizeRoles(['admin', 'attendant']), ticketController.getAllTickets);
 
 /**
  * @swagger
@@ -90,7 +90,7 @@ router.get('/', authorizeRoles(['admin', 'attendant']), ticketsController.getAll
  *       404:
  *         description: Ticket not found
  */
-router.get('/:id', authorizeRoles(['admin', 'attendant']), ticketsController.getTicketById);
+router.put('/:id', authorizeRoles(['admin', 'attendant']), ticketController.updateTicketStatus);
 
 /**
  * @swagger
@@ -126,6 +126,6 @@ router.get('/:id', authorizeRoles(['admin', 'attendant']), ticketsController.get
  *       404:
  *         description: User not found
  */
-router.get('/user/:userId', authorizeRoles(['admin', 'attendant', 'user']), ticketsController.getUserTickets);
+router.get('/user/:userId', authorizeRoles(['admin', 'attendant', 'user']), ticketController.getUserTickets);
 
 module.exports = router;

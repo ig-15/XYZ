@@ -1,186 +1,229 @@
 const express = require('express');
-const router = express.Router();
-const entriesController = require('../controllers/entries');
 const { authenticateJWT, authorizeRoles } = require('../../shared/middleware/auth');
+const db = require('../../shared/db');
 
-// Apply authentication to all routes
-router.use(authenticateJWT);
+const entriesController = {
+  getAllEntries: async (req, res, next) => {
+    try {
+      let {
+        page = 1,
+        limit = 10,
+        plate,
+        parkingId,
+        status,
+        startDate,
+        endDate
+      } = req.query;
 
-/**
- * @swagger
- * /api/entries:
- *   get:
- *     summary: Get all entries with pagination
- *     security:
- *       - bearerAuth: []
- *     tags: [Entries]
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
- *       - in: query
- *         name: plate
- *         schema:
- *           type: string
- *         description: Filter by plate number (partial match)
- *       - in: query
- *         name: parkingId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by parking ID
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [active, completed]
- *         description: Filter by entry status
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Filter by entry time (start)
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date-time
- *         description: Filter by entry time (end)
- *     responses:
- *       200:
- *         description: A paginated list of entries
- *       401:
- *         description: Unauthorized
- */
-router.get('/', authorizeRoles(['admin', 'attendant']), entriesController.getAllEntries);
+      page = parseInt(page);
+      limit = parseInt(limit);
+      const offset = (page - 1) * limit;
 
-/**
- * @swagger
- * /api/entries/active:
- *   get:
- *     summary: Get active entries
- *     security:
- *       - bearerAuth: []
- *     tags: [Entries]
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *         description: Page number
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of items per page
- *       - in: query
- *         name: parkingId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by parking ID
- *     responses:
- *       200:
- *         description: List of active entries
- *       401:
- *         description: Unauthorized
- */
-router.get('/active', authorizeRoles(['admin', 'attendant']), entriesController.getActiveEntries);
+      let query = `
+        SELECT *, COUNT(*) OVER() AS total_count
+        FROM entries
+        WHERE 1=1
+      `;
+      const params = [];
 
-/**
- * @swagger
- * /api/entries/{id}:
- *   get:
- *     summary: Get entry by ID
- *     security:
- *       - bearerAuth: []
- *     tags: [Entries]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Entry ID
- *     responses:
- *       200:
- *         description: Entry details
- *       400:
- *         description: Invalid entry ID
- *       404:
- *         description: Entry not found
- */
-router.get('/:id', authorizeRoles(['admin', 'attendant']), entriesController.getEntryById);
+      if (plate) {
+        params.push(`%${plate}%`);
+        query += ` AND plate_number ILIKE $${params.length}`;
+      }
 
-/**
- * @swagger
- * /api/entries:
- *   post:
- *     summary: Register a new car entry
- *     security:
- *       - bearerAuth: []
- *     tags: [Entries]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - car_id
- *               - parking_id
- *             properties:
- *               car_id:
- *                 type: string
- *                 format: uuid
- *               parking_id:
- *                 type: string
- *                 format: uuid
- *     responses:
- *       201:
- *         description: Entry registered successfully
- *       400:
- *         description: Invalid input or no available spaces
- *       404:
- *         description: Car or parking not found
- *       409:
- *         description: Car already has an active entry
- */
-router.post('/', authorizeRoles(['admin', 'attendant']), entriesController.registerEntry);
+      if (parkingId) {
+        params.push(parkingId);
+        query += ` AND parking_id = $${params.length}`;
+      }
 
-/**
- * @swagger
- * /api/entries/{id}/exit:
- *   post:
- *     summary: Register car exit and calculate fee
- *     security:
- *       - bearerAuth: []
- *     tags: [Entries]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Entry ID
- *     responses:
- *       200:
- *         description: Exit registered and fee calculated
- *       400:
- *         description: Invalid entry ID or car already exited
- *       404:
- *         description: Entry not found
- */
-router.post('/:id/exit', authorizeRoles(['admin', 'attendant']), entriesController.registerExit);
+      if (status) {
+        params.push(status);
+        query += ` AND status = $${params.length}`;
+      }
 
-module.exports = router;
+      if (startDate) {
+        params.push(startDate);
+        query += ` AND entry_time >= $${params.length}`;
+      }
+
+      if (endDate) {
+        params.push(endDate);
+        query += ` AND entry_time <= $${params.length}`;
+      }
+
+      params.push(limit, offset);
+      query += ` ORDER BY entry_time DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+      const result = await db.query(query, params);
+
+      const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
+
+      res.json({
+        success: true,
+        data: result.rows,
+        pagination: {
+          page,
+          limit,
+          total: totalCount
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getActiveEntries: async (req, res, next) => {
+    try {
+      let { page = 1, limit = 10, parkingId } = req.query;
+
+      page = parseInt(page);
+      limit = parseInt(limit);
+      const offset = (page - 1) * limit;
+
+      let query = `
+        SELECT *, COUNT(*) OVER() AS total_count
+        FROM entries
+        WHERE status = $1
+      `;
+      const params = ['active'];
+
+      if (parkingId) {
+        params.push(parkingId);
+        query += ` AND parking_id = $${params.length}`;
+      }
+
+      params.push(limit, offset);
+      query += ` ORDER BY entry_time DESC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+      const result = await db.query(query, params);
+      const totalCount = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
+
+      res.json({
+        success: true,
+        data: result.rows,
+        pagination: {
+          page,
+          limit,
+          total: totalCount
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  getEntryById: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const result = await db.query('SELECT * FROM entries WHERE id = $1', [id]);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Entry not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.rows[0]
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  registerEntry: async (req, res, next) => {
+    try {
+      const { car_id, parking_id } = req.body;
+
+      const carResult = await db.query('SELECT * FROM cars WHERE id = $1', [car_id]);
+      if (carResult.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Car not found' });
+      }
+
+      const parkingResult = await db.query(
+        'SELECT * FROM parkings WHERE id = $1 AND available_spaces > 0',
+        [parking_id]
+      );
+
+      if (parkingResult.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parking not found or no available spaces'
+        });
+      }
+
+      const activeEntryResult = await db.query(
+        'SELECT * FROM entries WHERE car_id = $1 AND status = $2',
+        [car_id, 'active']
+      );
+
+      if (activeEntryResult.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: 'Car already has an active entry'
+        });
+      }
+
+      const entryResult = await db.query(
+        `INSERT INTO entries (car_id, parking_id, entry_time, status)
+         VALUES ($1, $2, NOW(), $3)
+         RETURNING *`,
+        [car_id, parking_id, 'active']
+      );
+
+      await db.query(
+        'UPDATE parkings SET available_spaces = available_spaces - 1 WHERE id = $1',
+        [parking_id]
+      );
+
+      res.status(201).json({ success: true, data: entryResult.rows[0] });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  registerExit: async (req, res, next) => {
+    try {
+      const { id } = req.params;
+
+      const entryResult = await db.query(
+        'SELECT * FROM entries WHERE id = $1 AND status = $2',
+        [id, 'active']
+      );
+
+      if (entryResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Active entry not found'
+        });
+      }
+
+      const entry = entryResult.rows[0];
+      const exitTime = new Date();
+      const entryTime = new Date(entry.entry_time);
+      const durationHours = (exitTime - entryTime) / (1000 * 60 * 60);
+      const fee = Math.ceil(durationHours * 5); // $5 per hour
+
+      const updateResult = await db.query(
+        `UPDATE entries
+         SET exit_time = $1, status = $2, fee = $3
+         WHERE id = $4
+         RETURNING *`,
+        [exitTime, 'completed', fee, id]
+      );
+
+      await db.query(
+        'UPDATE parkings SET available_spaces = available_spaces + 1 WHERE id = $1',
+        [entry.parking_id]
+      );
+
+      res.json({ success: true, data: updateResult.rows[0] });
+    } catch (error) {
+      next(error);
+    }
+  }
+};
+
+module.exports = entriesController;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
@@ -56,11 +55,25 @@ interface AuthFormProps {
 
 const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
   const navigate = useNavigate();
-  const { login, register, isAuthenticated, user } = useAuth();
+  const { login, register, isAuthenticated, user, error } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    // Clear form error when changing form type
+    setFormError(null);
+  }, [type]);
+
+  React.useEffect(() => {
+    // Update form error when auth context error changes
+    if (error) {
+      setFormError(error);
+    }
+  }, [error]);
 
   React.useEffect(() => {
     if (isAuthenticated && user) {
+      console.log('User authenticated, redirecting based on role:', user.role);
       switch (user.role) {
         case 'admin':
           navigate('/admin/dashboard');
@@ -98,10 +111,14 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
   const onLoginSubmit = async (values: LoginFormValues) => {
     setIsSubmitting(true);
+    setFormError(null);
     try {
+      console.log('Submitting login form with values:', { email: values.email });
       await login(values.email, values.password);
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (error: any) {
+      console.error('Login form submission error:', error);
+      const errorMessage = error?.message || 'Failed to login. Please try again.';
+      setFormError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -109,13 +126,17 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
 
   const onRegisterSubmit = async (values: RegisterFormValues) => {
     setIsSubmitting(true);
+    setFormError(null);
     try {
+      console.log('Submitting registration form');
       const { confirmPassword, ...userData } = values;
       await register(userData as Partial<User> & { password: string });
       toast.success('Registration successful! Please log in.');
       navigate('/login');
-    } catch (error) {
-      console.error('Registration error:', error);
+    } catch (error: any) {
+      console.error('Registration form submission error:', error);
+      const errorMessage = error?.message || 'Failed to register. Please try again.';
+      setFormError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -129,6 +150,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
           <CardDescription>Enter your email and password to access your account</CardDescription>
         </CardHeader>
         <CardContent>
+          {formError && (
+            <div className="mb-4 p-3 bg-destructive/15 text-destructive rounded-md text-sm">
+              {formError}
+            </div>
+          )}
           <Form {...loginForm}>
             <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
               <FormField
@@ -182,6 +208,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type }) => {
         <CardDescription>Enter your details to create a new account</CardDescription>
       </CardHeader>
       <CardContent>
+        {formError && (
+          <div className="mb-4 p-3 bg-destructive/15 text-destructive rounded-md text-sm">
+            {formError}
+          </div>
+        )}
         <Form {...registerForm}>
           <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">

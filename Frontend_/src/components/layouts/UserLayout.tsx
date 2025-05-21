@@ -36,11 +36,12 @@ const UserLayout: React.FC<UserLayoutProps> = ({ children }) => {
 
   const handleLogout = async () => {
     try {
-      await authApi.logout();
-      logout();
+      await logout();
       navigate('/login');
     } catch (error) {
       console.error('Logout failed', error);
+      // Navigate to login even if logout fails
+      navigate('/login');
     }
   };
 
